@@ -10,7 +10,11 @@ Create a virtual environment:<br />
 Activate virtual environment: <br />
 `.\Scripts\activate`
 
+Install [Microsoft Build Tools](https://www.microsoft.com/en-in/download/details.aspx?id=48159)
+
 Install necessary packages: <br />
 `pip install -r requirements.txt`
+
+`winget install -e --id intxcc.pyaudio`
 
 </details>
