@@ -4,74 +4,73 @@ import { CharacterStats } from '../types';
 
 interface CharacterSheetProps {
   stats: CharacterStats;
+  isRightSide?: boolean;
+  isBottomRow?: boolean;
+  avatarIcon?: string;
+  themeColor?: string;
+  subLabel?: string;
 }
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ stats }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ 
+  stats, 
+  isRightSide = false, 
+  isBottomRow = false,
+  avatarIcon = 'person',
+  themeColor = '#00FF95',
+  subLabel = 'Specialist • Lvl 12'
+}) => {
   const hpPercent = (stats.hp / stats.maxHp) * 100;
+  const dashOffset = 283 - (283 * hpPercent) / 100;
 
   return (
-    <div className="parchment p-6 rounded-lg shadow-2xl h-full flex flex-col gap-4 overflow-y-auto medieval-font">
-      <div className="text-center border-b-2 border-slate-800 pb-2">
-        <h2 className="text-3xl font-bold fantasy-font uppercase tracking-wider">{stats.name}</h2>
-        <p className="text-lg italic">Level {stats.level} {stats.class}</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        {/* Vital Stats */}
-        <div className="space-y-3">
-          <div>
-            <div className="flex justify-between text-sm font-bold mb-1">
-              <span>HIT POINTS</span>
-              <span>{stats.hp} / {stats.maxHp}</span>
-            </div>
-            <div className="w-full bg-slate-300 h-4 rounded-full border border-slate-500 overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-500 ${hpPercent < 25 ? 'bg-red-600' : hpPercent < 50 ? 'bg-orange-500' : 'bg-green-600'}`}
-                style={{ width: `${hpPercent}%` }}
-              />
-            </div>
-          </div>
-          <div className="flex justify-around bg-slate-200/50 p-2 border-2 border-slate-400 rounded">
-            <div className="text-center">
-              <span className="block text-xs font-bold">AC</span>
-              <span className="text-2xl font-bold">{stats.ac}</span>
-            </div>
-            <div className="text-center">
-              <span className="block text-xs font-bold">GOLD</span>
-              <span className="text-2xl font-bold text-yellow-700">🪙 {stats.gold}</span>
-            </div>
+    <div className={`tile-box p-8 ${isRightSide ? 'items-end text-right border-l-0' : 'border-r-0'} ${isBottomRow ? 'border-t-0' : 'border-b-0'}`}>
+      <div className={`flex gap-6 items-center mb-8 ${isRightSide ? 'flex-row-reverse' : ''}`}>
+        <div className="vital-orb">
+          <svg className="orb-svg" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" fill="none" r="45" stroke="rgba(255,255,255,0.05)" strokeWidth="4"></circle>
+            <circle 
+              cx="50" cy="50" fill="none" r="45" 
+              stroke={themeColor} 
+              strokeDasharray="283" 
+              strokeDashoffset={dashOffset} 
+              strokeWidth="4"
+              className="transition-all duration-1000"
+            ></circle>
+          </svg>
+          <div className="size-16 rounded-full overflow-hidden border border-neon-gold/20 bg-cyber-slate flex items-center justify-center">
+            <span className="material-symbols-outlined text-neon-gold text-4xl">{avatarIcon}</span>
           </div>
         </div>
-
-        {/* Abilities */}
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { label: 'STR', val: stats.str },
-            { label: 'DEX', val: stats.dex },
-            { label: 'CON', val: stats.con },
-            { label: 'INT', val: stats.int },
-            { label: 'WIS', val: stats.wis },
-            { label: 'CHA', val: stats.cha }
-          ].map(attr => (
-            <div key={attr.label} className="border-2 border-slate-800 rounded p-1 text-center bg-white/30">
-              <span className="text-[10px] font-bold block">{attr.label}</span>
-              <span className="text-lg font-bold">{attr.val}</span>
-            </div>
-          ))}
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tighter uppercase">{stats.name}</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: `${themeColor}CC` }}>{stats.class} • Lvl {stats.level}</p>
+          <div className={`flex gap-1 mt-2 ${isRightSide ? 'justify-end' : ''}`}>
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className={`pip ${i <= stats.level % 4 + 1 ? 'pip-active' : 'pip-inactive'}`}></div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 mt-4">
-        <h3 className="text-xl font-bold border-b border-slate-800 mb-2 fantasy-font">INVENTORY</h3>
-        <ul className="list-disc list-inside text-sm space-y-1">
-          {stats.inventory.map((item, idx) => (
-            <li key={idx} className="hover:font-bold transition-all cursor-default">{item}</li>
-          ))}
-        </ul>
+      <div className="grid grid-cols-2 gap-2 mb-6 w-full">
+        {stats.inventory.slice(0, 4).map((item, idx) => (
+          <div key={idx} className={`glass-badge ${isRightSide ? 'justify-end' : ''}`}>
+            {idx === 0 ? '⚔️' : idx === 1 ? '🧪' : idx === 2 ? '🕵️' : '💾'} {item}
+          </div>
+        ))}
       </div>
 
-      <div className="text-[10px] text-slate-500 italic mt-4 text-center">
-        Snowflake Sync Active • Raspberry Pi Edge Agent
+      <div className="mt-auto pt-4 border-t border-neon-gold/10 w-full">
+        <div className={`flex justify-between text-[10px] uppercase mb-1 ${isRightSide ? 'flex-row-reverse' : ''}`}>
+          <span>{isBottomRow ? 'Shield Integrity' : 'Sync-Rate'}</span>
+          <span>{Math.round(hpPercent)}%</span>
+        </div>
+        <div className="h-1 w-full bg-white/5">
+          <div 
+            className={`h-full ${isRightSide ? 'float-right' : ''}`} 
+            style={{ width: `${hpPercent}%`, backgroundColor: themeColor }}
+          ></div>
+        </div>
       </div>
     </div>
   );

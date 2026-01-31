@@ -8,24 +8,24 @@ import { INITIAL_CHARACTER } from './constants';
 import { createAiClient, queryCompendiumTool, updateCharacterStatsTool, saveGameLogTool } from './services/geminiService';
 import { audioService } from './services/audioService';
 
-// Mock Snowflake Data for Demonstration
-const MOCK_SNOWFLAKE_COMPENDIUM: Record<string, any> = {
-  "goblin": { hp: 7, ac: 13, attack: "Scimitar +4 (1d6+2)", lore: "Small, malicious humanoids that dwell in caves." },
-  "dragon": { hp: 256, ac: 19, attack: "Fire Breath (15d6)", lore: "A legendary beast of immense power and greed." }
-};
+const MOCK_CHARACTERS: CharacterStats[] = [
+  { ...INITIAL_CHARACTER, name: "KAIZEN", class: "Infiltrator", level: 12 },
+  { ...INITIAL_CHARACTER, name: "MIRA", class: "Technomancer", level: 11, hp: 8, themeColor: '#FF3131', avatar: 'auto_awesome' } as any,
+  { ...INITIAL_CHARACTER, name: "JAX", class: "Shield-Core", level: 12, hp: 12, avatar: 'shield' } as any,
+  { ...INITIAL_CHARACTER, name: "NYX", class: "Noise-Runner", level: 11, hp: 9, avatar: 'music_note' } as any,
+];
 
 const App: React.FC = () => {
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [unitCount, setUnitCount] = useState<number | null>(null);
   const [character, setCharacter] = useState<CharacterStats>(INITIAL_CHARACTER);
   const [logs, setLogs] = useState<GameEntry[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isLive, setIsLive] = useState(false);
   
-  const aiRef = useRef(createAiClient());
   const chatRef = useRef<any>(null);
 
   useEffect(() => {
-    // Initialize standard chat
     const ai = createAiClient();
     chatRef.current = ai.chats.create({
       model: 'gemini-3-pro-preview',
@@ -35,29 +35,11 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const handleTools = async (functionCalls: any[]) => {
-    const results = [];
-    for (const fc of functionCalls) {
-      setIsSyncing(true);
-      console.log(`[Snowflake Operation] Calling: ${fc.name}`, fc.args);
-      
-      // Simulate Pi -> Snowflake Latency
-      await new Promise(r => setTimeout(r, 1000));
-
-      let result = "Success";
-      if (fc.name === 'updateCharacterStats') {
-        setCharacter(prev => ({ ...prev, ...fc.args }));
-      } else if (fc.name === 'queryCompendium') {
-        const term = fc.args.searchTerm.toLowerCase();
-        result = MOCK_SNOWFLAKE_COMPENDIUM[term] || "No specific data found in Snowflake COMPENDIUM, use general D&D knowledge.";
-      } else if (fc.name === 'saveGameLog') {
-        setLogs(prev => prev.map(l => ({ ...l, isSnowflakeSynced: true })));
-      }
-      
-      results.push({ name: fc.name, result });
-      setIsSyncing(false);
+  const handleStartMission = () => {
+    if (unitCount) {
+      setIsInitialized(true);
+      handleSendMessage("Initialize mission protocol. Scanning sector...");
     }
-    return results;
   };
 
   const handleSendMessage = async (message: string) => {
@@ -73,21 +55,9 @@ const App: React.FC = () => {
     setIsThinking(true);
 
     try {
-      let response = await chatRef.current.sendMessage({ message });
+      const response = await chatRef.current.sendMessage({ message });
+      const dmContent = response.text || "Encryption active. Database update complete.";
       
-      // If the model ONLY called tools, we need to send the tool results back 
-      // to get a narrative response.
-      if (response.candidates?.[0]?.content?.parts) {
-        const calls = response.candidates[0].content.parts.filter(p => p.functionCall).map(p => p.functionCall);
-        if (calls.length > 0) {
-          const toolResults = await handleTools(calls);
-          // In a real app, you'd send these results back to the model to get a "final" text response.
-          // For now, if text is empty, we force a follow-up or use the provided text.
-        }
-      }
-
-      const dmContent = response.text || "The Master consults the ancient scrolls (Updating Database)... What do you do next?";
-
       const dmLog: GameEntry = {
         id: (Date.now() + 1).toString(),
         timestamp: new Date().toLocaleTimeString(),
@@ -96,69 +66,162 @@ const App: React.FC = () => {
         isSnowflakeSynced: true
       };
       setLogs(prev => [...prev, dmLog]);
-
     } catch (error) {
-      console.error("DM Error:", error);
+      console.error("Transmission Error:", error);
     } finally {
       setIsThinking(false);
     }
   };
 
-  const toggleLive = () => {
-    setIsLive(!isLive);
-    // In a full implementation, this would trigger navigation.mediaDevices.getUserMedia
-    // and sessionPromise.then(session => session.sendRealtimeInput)
-    alert("Live Audio Mode: In a real Pi 5 environment, this initiates a high-speed websocket to Gemini for instant voice interaction!");
-  };
-
-  return (
-    <div className="h-full w-full flex flex-col md:flex-row bg-[#080808]">
-      <aside className="w-full md:w-80 lg:w-96 p-4 border-r border-emerald-900/20 flex flex-col gap-4 overflow-hidden bg-black">
-        <div className="flex items-center justify-between p-3 bg-emerald-950/20 rounded-lg border border-emerald-900/30">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <h1 className="text-emerald-500 font-bold text-xs fantasy-font uppercase">Node: Pi-Edge-01</h1>
-          </div>
-          <button 
-            onClick={toggleLive}
-            className={`px-3 py-1 rounded text-[10px] font-bold transition-all ${isLive ? 'bg-red-600 text-white' : 'bg-emerald-900 text-emerald-400 hover:bg-emerald-700'}`}
-          >
-            {isLive ? 'STOP LIVE' : 'START LIVE VOICE'}
-          </button>
+  if (!isInitialized) {
+    return (
+      <div className="relative h-screen w-screen bg-obsidian text-neon-gold flex flex-col items-center justify-center overflow-hidden">
+        <div className="crt-overlay"></div>
+        <div className="absolute top-0 left-0 p-4 opacity-30 text-[10px] tracking-widest">
+            X-COORD_SECTOR: 77.21<br/>
+            Y-COORD_SECTOR: 12.04
         </div>
-        
-        <CharacterSheet stats={character} />
-        
-        <div className="bg-zinc-900/50 p-3 rounded border border-zinc-800 text-[10px] text-zinc-500 space-y-1">
-          <p className="flex justify-between"><span>SNOWFLAKE ADAPTER:</span> <span className="text-emerald-500">CONNECTED</span></p>
-          <p className="flex justify-between"><span>LORE RETRIEVAL:</span> <span className="text-emerald-500">ACTIVE</span></p>
-          <p className="flex justify-between"><span>LATENCY:</span> <span>42ms</span></p>
-        </div>
-      </aside>
 
-      <main className="flex-1 flex flex-col min-h-0 bg-[#0c0c0c] relative">
-        <header className="p-4 border-b border-emerald-900/20 flex justify-between items-center bg-[#0d0d0d] z-10">
-          <div className="flex items-center gap-4">
-             <i className="fa-solid fa-dice-d20 text-emerald-500 text-xl animate-spin-slow"></i>
-             <span className="fantasy-font text-emerald-500 font-bold uppercase tracking-widest">Snowflake Game Engine</span>
-          </div>
-          <div className="flex items-center gap-4 text-[10px]">
-             <span className="text-zinc-600 uppercase">Memory Index: 4,092 Logs</span>
-             <div className="flex items-center gap-1 text-blue-400">
-               <i className="fa-solid fa-cloud"></i>
-               <span>SFWK-PROD-01</span>
-             </div>
+        <header className="mb-20 text-center z-10">
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-[0.4em] text-white">INITIALIZING SQUAD...</h1>
+          <div className="flex items-center gap-4 mt-6 justify-center">
+            <div className="h-px w-24 bg-neon-gold/30"></div>
+            <div className="text-[10px] uppercase tracking-[0.5em] text-neon-gold">System: Select Unit Count</div>
+            <div className="h-px w-24 bg-neon-gold/30"></div>
           </div>
         </header>
 
-        <GameLog logs={logs} />
-        
-        <Terminal 
-          onSendMessage={handleSendMessage} 
-          isThinking={isThinking} 
-          isSyncing={isSyncing} 
-        />
+        <div className="flex flex-wrap justify-center gap-8 mb-24 z-10">
+          {[1, 2, 3, 4].map(n => (
+            <div 
+              key={n}
+              onClick={() => setUnitCount(n)}
+              className={`selection-card group ${unitCount === n ? 'card-selected' : ''}`}
+            >
+              <div className="absolute top-4 left-4 text-[10px] text-white/20 group-hover:text-[#00F0FF]/40">
+                ID: {n === 1 ? 'SOLO_OP' : n === 2 ? 'DUO_LINK' : n === 3 ? 'TRI_SYNC' : 'FULL_SQUAD'}
+              </div>
+              <span className={`text-7xl font-black mb-8 transition-all duration-300 ${unitCount === n ? 'text-neon-gold' : 'text-white/20 group-hover:text-[#00F0FF]'}`}>{n}</span>
+              <div className="size-24 border-2 border-neon-gold/20 rounded-full flex items-center justify-center">
+                 <span className="material-symbols-outlined text-4xl opacity-40">group</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <footer className="z-10 flex flex-col items-center">
+          <button 
+            disabled={!unitCount}
+            onClick={handleStartMission}
+            className={`py-6 px-16 border font-extrabold uppercase tracking-[0.6em] transition-all duration-500 ${unitCount ? 'bg-neon-gold text-obsidian border-neon-gold shadow-[0_0_40px_rgba(255,215,0,0.5)] cursor-pointer' : 'border-white/10 text-white/20 cursor-not-allowed'}`}
+          >
+            START MISSION
+          </button>
+          <div className="mt-8 flex items-center justify-center gap-2 text-[9px] uppercase tracking-widest text-neon-gold/40">
+            <span className="size-1 bg-neon-gold/20"></span>
+            <span>Awaiting selection from terminal...</span>
+            <span className="size-1 bg-neon-gold/20"></span>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-screen w-full relative bg-obsidian">
+      <div className="crt-overlay"></div>
+      
+      <header className="h-12 bg-obsidian flex items-center justify-between border-b border-neon-gold/20 px-6 z-50">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-neon-gold text-lg">grid_view</span>
+          <h1 className="text-[10px] font-extrabold tracking-[0.3em] uppercase">
+            Arcane Tactical Grid <span className="text-neon-gold/40 mx-2">//</span> <span className="text-neon-gold">v1.0.4</span>
+          </h1>
+        </div>
+        <div className="flex items-center gap-6 text-[9px] uppercase tracking-widest text-neon-gold/60">
+          <div className="flex items-center gap-2">
+            <span className="size-1.5 bg-arcane-green rounded-full animate-pulse"></span>
+            <span>Neural Link Stable</span>
+          </div>
+          <div className="h-4 w-px bg-neon-gold/20"></div>
+          <span>Buffer: 99.8%</span>
+        </div>
+      </header>
+
+      <main className="flex-1 overflow-hidden relative">
+        <div className="unified-grid">
+          {/* Column 1: Left Stats */}
+          <div className="flex flex-col h-full">
+            <CharacterSheet stats={MOCK_CHARACTERS[0]} avatarIcon="person_2" />
+            <CharacterSheet stats={MOCK_CHARACTERS[2]} avatarIcon="shield" isBottomRow />
+          </div>
+
+          {/* Column 2: Narrative Center */}
+          <div className="tile-box narrative-tile p-12 flex flex-col items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center max-w-lg text-center overflow-hidden">
+              <div className="mb-8">
+                <div className="size-12 rounded-full border-2 border-neon-gold flex items-center justify-center mb-4 mx-auto">
+                  <span className="material-symbols-outlined text-neon-gold">terminal</span>
+                </div>
+                <h3 className="text-[10px] font-bold text-neon-gold tracking-[0.6em] uppercase">DM Interface : Narrative</h3>
+                <div className="flex items-center gap-4 w-48 mt-4 mx-auto">
+                  <div className="h-px flex-1 bg-neon-gold/30"></div>
+                  <div className="size-1 bg-neon-gold rotate-45"></div>
+                  <div className="h-px flex-1 bg-neon-gold/30"></div>
+                </div>
+              </div>
+              
+              <div className="relative py-8 px-8 border-y border-neon-gold/10 w-full overflow-y-auto custom-scrollbar flex-1">
+                {logs.length > 0 ? (
+                  <div className="space-y-6 text-left">
+                    {logs.map(log => (
+                      <div key={log.id} className={log.role === 'user' ? 'text-right opacity-50' : 'text-left'}>
+                         <p className={`text-lg leading-relaxed italic ${log.role === 'dm' ? 'text-white' : 'text-neon-gold'}`}>
+                            {log.role === 'user' && '> '}{log.content}
+                         </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xl text-white/90 leading-relaxed font-light italic">
+                    "The grid initializes. Searching for biological signatures in the archive entry. Waiting for neural command..."
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="w-full max-w-sm mt-8">
+              <Terminal onSendMessage={handleSendMessage} isThinking={isThinking} isSyncing={isSyncing} />
+            </div>
+          </div>
+
+          {/* Column 3: Right Stats */}
+          <div className="flex flex-col h-full">
+            <CharacterSheet stats={MOCK_CHARACTERS[1]} isRightSide themeColor="#FF3131" avatarIcon="auto_awesome" />
+            <CharacterSheet stats={MOCK_CHARACTERS[3]} isRightSide isBottomRow avatarIcon="music_note" />
+          </div>
+        </div>
+
+        <div className="connector-dot top-1/2 left-[31.25%] -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="connector-dot top-1/2 left-[68.75%] -translate-x-1/2 -translate-y-1/2"></div>
       </main>
+
+      <footer className="system-pulse">
+        <div className="flex items-center gap-4 text-[9px] uppercase tracking-widest text-neon-gold/60 w-full">
+          <span className="text-neon-gold font-bold">SYSTEM_LOG &gt;</span>
+          <div className="flex-1 overflow-hidden whitespace-nowrap">
+            <span className="inline-block animate-[pulse_2s_infinite]">
+              {isThinking ? 'Processing Neural Signals... ' : 'Neural Link Stable... '}
+              {isSyncing ? 'Accessing Snowflake Compendium... ' : 'Archive Connection Secured... '}
+              Location: The Great Archive Entrance...
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[12px]">sensors</span>
+            <span>PULSE: 72 BPM</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

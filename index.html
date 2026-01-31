@@ -2,41 +2,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autonomous DM Agent</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=MedievalSharp&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            background-color: #0d0d0d;
-            color: #e0e0e0;
-            font-family: 'Fira Code', monospace;
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Arcane Tactical Grid v1 // Terminal</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "obsidian": "#0D0D0D",
+                        "neon-gold": "#FFD700",
+                        "arcane-green": "#00FF95",
+                        "arcane-red": "#FF3131",
+                        "cyber-slate": "#1A1A1A",
+                    },
+                    fontFamily: {
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                },
+            },
         }
-        .fantasy-font {
-            font-family: 'Cinzel', serif;
+    </script>
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-obsidian text-neon-gold/90 font-mono overflow-hidden h-screen w-screen;
+            }
         }
-        .medieval-font {
-            font-family: 'MedievalSharp', cursive;
+        .unified-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            height: 100%;
+            width: 100%;
+            gap: 0;
+            background: #0D0D0D;
         }
-        .parchment {
-            background-color: #f4e4bc;
-            color: #2b2b2b;
-            border: 8px solid #3d2b1f;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        .tile-box {
+            @apply bg-obsidian border border-neon-gold/20 relative flex flex-col overflow-hidden;
+            background-image: radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.03) 0%, transparent 70%);
         }
-        .crt-flicker {
-            animation: flicker 0.15s infinite;
+        .narrative-tile {
+            @apply border-neon-gold/40 bg-[#111111];
+            grid-column: 2;
+            grid-row: 1 / span 2;
         }
-        @keyframes flicker {
-            0% { opacity: 0.97; }
-            5% { opacity: 0.95; }
-            10% { opacity: 0.9; }
-            15% { opacity: 0.98; }
-            30% { opacity: 0.95; }
-            50% { opacity: 0.92; }
-            100% { opacity: 0.99; }
+        .vital-orb {
+            @apply relative size-24 flex items-center justify-center;
+        }
+        .orb-svg {
+            @apply absolute inset-0 -rotate-90;
+        }
+        .glass-badge {
+            @apply bg-white/5 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-[10px] flex items-center gap-1 uppercase font-bold;
+        }
+        .pip {
+            @apply size-1.5 rounded-sm;
+        }
+        .pip-active {
+            @apply bg-neon-gold shadow-[0_0_5px_#FFD700];
+        }
+        .pip-inactive {
+            @apply bg-white/10;
+        }
+        .btn-initiate {
+            @apply bg-neon-gold text-obsidian font-extrabold uppercase tracking-[0.4em] py-4 px-8 border border-neon-gold hover:bg-transparent hover:text-neon-gold transition-all duration-300;
+        }
+        .system-pulse {
+            @apply h-8 bg-obsidian border-t border-neon-gold/30 flex items-center px-6 overflow-hidden;
+        }
+        .connector-dot {
+            @apply absolute size-2 bg-neon-gold/50 rounded-full z-30;
+        }
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            position: absolute;
+            inset: 0;
+            z-index: 100;
         }
         @keyframes spin-slow {
             from { transform: rotate(0deg); }
@@ -45,33 +91,30 @@
         .animate-spin-slow {
             animation: spin-slow 8s linear infinite;
         }
-        .glow-text {
-            text-shadow: 0 0 5px rgba(34, 197, 94, 0.7);
+        .selection-card {
+            @apply relative w-64 h-96 bg-white/5 backdrop-blur-md border border-neon-gold/20 flex flex-col items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
+        .selection-card:hover {
+            @apply border-[#00F0FF] shadow-[0_0_25px_rgba(0,240,255,0.4)] scale-105;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #065f46;
-            border-radius: 10px;
+        .card-selected {
+            @apply border-neon-gold bg-neon-gold/5 shadow-[0_0_30px_rgba(255,215,0,0.2)];
         }
     </style>
-<script type="importmap">
+    <script type="importmap">
 {
   "imports": {
     "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "react/": "https://esm.sh/react@^19.2.4/"
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-<body class="overflow-hidden h-screen w-screen">
+<body>
     <div id="root" class="h-full w-full"></div>
 <script type="module" src="/index.tsx"></script>
 </body>
