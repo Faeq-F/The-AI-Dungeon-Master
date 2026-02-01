@@ -13,7 +13,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from snowflake_db import fetch_monster, update_player_stats
+from snowflake_db import fetch_monster, fetch_monster_stats, update_player_stats
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODEL = "google/gemini-2.5-pro"
@@ -53,6 +53,21 @@ def _extract_search_terms(message: str) -> list[str]:
     return terms[:5]  # Limit to a few lookups per turn
 
 
+def _get_monster_stats_for_message(message: str) -> dict[str, Any] | None:
+    """
+    Scan the player message for monster names; for the first candidate, call fetch_monster_stats.
+    Returns dict with name, hp, ac (and optionally type, abilities) or None if none found.
+    """
+    terms = _extract_search_terms(message)
+    for term in terms:
+        if not term or len(term) < 2:
+            continue
+        row = fetch_monster_stats(term)
+        if row and (row.get("hp") is not None or row.get("ac") is not None):
+            return row
+    return None
+
+
 def _query_compendium(message: str) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     """
     Query Snowflake for monster/compendium data first.
@@ -76,7 +91,12 @@ def _query_compendium(message: str) -> tuple[list[dict[str, Any]], dict[str, Any
     return entries, first_monster
 
 
-def _call_openrouter(message: str, stats: dict[str, Any], compendium_entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _call_openrouter(
+    message: str,
+    stats: dict[str, Any],
+    compendium_entries: list[dict[str, Any]],
+    monster_stats: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Call OpenRouter (google/gemini-2.5-pro) with DM instruction + compendium context + stats + message; return parsed JSON."""
     api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("API_KEY", "")
     if not api_key:
@@ -106,6 +126,19 @@ PLAYER MESSAGE: {message}
 
 Respond with ONLY the JSON object (narrative, hp_change, xp_change, gold_change, new_items). No markdown."""
 
+    system_content = DM_SYSTEM_INSTRUCTION
+    if monster_stats:
+        m_name = monster_stats.get("name", "Unknown")
+        m_hp = monster_stats.get("hp")
+        m_ac = monster_stats.get("ac")
+        parts = [f"ENCOUNTER MONSTER: {m_name}."]
+        if m_hp is not None:
+            parts.append(f"HP = {m_hp}.")
+        if m_ac is not None:
+            parts.append(f"AC = {m_ac}.")
+        system_content += "\n\n" + " ".join(parts)
+        system_content += " You MUST use these exact stats for the encounter. Do not hallucinate different HP or AC values."
+
     try:
         client = OpenAI(
             base_url=OPENROUTER_BASE_URL,
@@ -114,7 +147,7 @@ Respond with ONLY the JSON object (narrative, hp_change, xp_change, gold_change,
         response = client.chat.completions.create(
             model=OPENROUTER_MODEL,
             messages=[
-                {"role": "system", "content": DM_SYSTEM_INSTRUCTION},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": user_content},
             ],
             response_format={"type": "json_object"},
@@ -164,11 +197,14 @@ def run_turn(
     xp = stats.get("xp", 0)
     gold = stats.get("gold", 0)
 
-    # 1) Query Snowflake for monster/compendium data first
+    # 1) Scan message for monster names; if found, fetch exact HP/AC from Snowflake
+    monster_stats = _get_monster_stats_for_message(message)
+
+    # 2) Query Snowflake for monster/compendium data (for general context)
     compendium_entries, first_monster = _query_compendium(message)
 
-    # 2) Call OpenRouter (google/gemini-2.5-pro) with that context + stats + message
-    result = _call_openrouter(message, stats, compendium_entries)
+    # 3) Call OpenRouter with compendium + monster stats (HP/AC in system prompt) + message
+    result = _call_openrouter(message, stats, compendium_entries, monster_stats=monster_stats)
     narrative = result.get("narrative", "")
     hp_change = result.get("hp_change", 0)
     xp_change = result.get("xp_change", 0)
@@ -190,7 +226,7 @@ def run_turn(
     if player_id:
         new_stats["player_id"] = player_id
 
-    # 3) Persist updated stats to Snowflake (equivalent of updateCharacterStats tool)
+    # 4) Persist updated stats to Snowflake (equivalent of updateCharacterStats tool)
     try:
         update_player_stats(new_stats)
     except Exception:

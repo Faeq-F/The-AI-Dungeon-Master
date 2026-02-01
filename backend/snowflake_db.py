@@ -7,6 +7,7 @@ SNOWFLAKE_WAREHOUSE, SNOWFLAKE_DATABASE, SNOWFLAKE_SCHEMA.
 Expected tables (adjust names to match your Snowflake schema):
   - COMPENDIUM: name, type, hp, ac, description (monsters/items/lore)
   - PLAYER_STATS: player_id, hp, gold, xp, inventory (JSON or array column)
+  - GAME_HISTORY: player_name, action, narrative, stats (VARIANT)
 """
 
 import json
@@ -123,3 +124,79 @@ def update_player_stats(stats: dict[str, Any]) -> None:
                 conn.close()
             except Exception:
                 pass
+
+
+def save_game_turn(
+    player_name: str,
+    action: str,
+    narrative: str,
+    stats: dict[str, Any],
+) -> None:
+    """
+    Insert a new row into GAME_HISTORY for this turn.
+    stats is serialized with json.dumps() and stored in a VARIANT column.
+    """
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        stats_json = json.dumps(stats) if stats is not None else "{}"
+        cur.execute(
+            """
+            INSERT INTO GAME_HISTORY (player_name, action, narrative, stats)
+            VALUES (%s, %s, %s, PARSE_JSON(%s))
+            """,
+            (player_name, action, narrative, stats_json),
+        )
+        conn.commit()
+        cur.close()
+    except Exception:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        raise
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def fetch_monster_stats(monster_name):
+    """
+    Searches Snowflake for a monster and returns its stats.
+    Using 'ILIKE' makes it find 'Goblin' even if the player types 'goblin'.
+    """
+    conn = get_connection() # Uses your existing connection logic
+    cursor = conn.cursor()
+    
+    query = """
+    SELECT 
+        DATA:name::string as name,
+        DATA:hit_points::int as hp,
+        DATA:armor_class[0].value::int as ac,
+        DATA:type::string as type,
+        DATA:special_abilities::variant as abilities
+    FROM MONSTERS
+    WHERE DATA:name::string ILIKE %s
+    LIMIT 1
+    """
+    
+    try:
+        cursor.execute(query, (f"%{monster_name}%",))
+        result = cursor.fetchone()
+        if result:
+            return {
+                "name": result[0],
+                "hp": result[1],
+                "ac": result[2],
+                "type": result[3],
+                "abilities": result[4]
+            }
+        return None
+    finally:
+        cursor.close()
+        conn.close()
