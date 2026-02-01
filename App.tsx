@@ -1,4 +1,4 @@
-
+import axios from "axios";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import CharacterSheet from './components/CharacterSheet';
 import GameLog from './components/GameLog';
@@ -7,6 +7,7 @@ import { CharacterStats, GameEntry } from './types';
 import { INITIAL_CHARACTER } from './constants';
 import { createAiClient, queryCompendiumTool, updateCharacterStatsTool, saveGameLogTool } from './services/geminiService';
 import { audioService } from './services/audioService';
+import { ConversationsListRequestSummaryMode } from "@elevenlabs/elevenlabs-js/api/resources/conversationalAi";
 
 const MOCK_CHARACTERS: CharacterStats[] = [
   { ...INITIAL_CHARACTER, name: "KAIZEN", class: "Infiltrator", level: 12 },
@@ -22,13 +23,13 @@ const App: React.FC = () => {
   const [logs, setLogs] = useState<GameEntry[]>([]);
   const [isThinking, setIsThinking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  
+
   const chatRef = useRef<any>(null);
 
   useEffect(() => {
     const ai = createAiClient();
     chatRef.current = ai.chats.create({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       config: {
         tools: [{ functionDeclarations: [queryCompendiumTool, updateCharacterStatsTool, saveGameLogTool] }],
       },
@@ -55,9 +56,13 @@ const App: React.FC = () => {
     setIsThinking(true);
 
     try {
+      axios.get('http://localhost:3000/speak/' + 'N2lVS1w4EtoT3dr4eOWO' + '/' + message.replaceAll(" ", "&").replaceAll("%", "percent").replaceAll("[", "").replaceAll("]", "").replaceAll("*", "")).then((data) => {
+        console.log(data)
+      })
       const response = await chatRef.current.sendMessage({ message });
-      const dmContent = response.text || "Encryption active. Database update complete.";
-      
+
+      let dmContent = response.text
+
       const dmLog: GameEntry = {
         id: (Date.now() + 1).toString(),
         timestamp: new Date().toLocaleTimeString(),
@@ -66,6 +71,13 @@ const App: React.FC = () => {
         isSnowflakeSynced: true
       };
       setLogs(prev => [...prev, dmLog]);
+
+      console.log(dmLog)
+
+      axios.get('http://localhost:3000/speak/' + 'JBFqnCBsd6RMkjVDRZzb' + '/' + dmLog.content.replaceAll(" ", "&").replaceAll("%", "percent").replaceAll("[", "").replaceAll("]", "").replaceAll("*", "")).then((data) => {
+        console.log(data)
+      })
+
     } catch (error) {
       console.error("Transmission Error:", error);
     } finally {
@@ -78,8 +90,8 @@ const App: React.FC = () => {
       <div className="relative h-screen w-screen bg-obsidian text-neon-gold flex flex-col items-center justify-center overflow-hidden">
         <div className="crt-overlay"></div>
         <div className="absolute top-0 left-0 p-4 opacity-30 text-[10px] tracking-widest">
-            X-COORD_SECTOR: 77.21<br/>
-            Y-COORD_SECTOR: 12.04
+          X-COORD_SECTOR: 77.21<br />
+          Y-COORD_SECTOR: 12.04
         </div>
 
         <header className="mb-20 text-center z-10">
@@ -93,7 +105,7 @@ const App: React.FC = () => {
 
         <div className="flex flex-wrap justify-center gap-8 mb-24 z-10">
           {[1, 2, 3, 4].map(n => (
-            <div 
+            <div
               key={n}
               onClick={() => setUnitCount(n)}
               className={`selection-card group ${unitCount === n ? 'card-selected' : ''}`}
@@ -103,14 +115,14 @@ const App: React.FC = () => {
               </div>
               <span className={`text-7xl font-black mb-8 transition-all duration-300 ${unitCount === n ? 'text-neon-gold' : 'text-white/20 group-hover:text-[#00F0FF]'}`}>{n}</span>
               <div className="size-24 border-2 border-neon-gold/20 rounded-full flex items-center justify-center">
-                 <span className="material-symbols-outlined text-4xl opacity-40">group</span>
+                <span className="material-symbols-outlined text-4xl opacity-40">group</span>
               </div>
             </div>
           ))}
         </div>
 
         <footer className="z-10 flex flex-col items-center">
-          <button 
+          <button
             disabled={!unitCount}
             onClick={handleStartMission}
             className={`py-6 px-16 border font-extrabold uppercase tracking-[0.6em] transition-all duration-500 ${unitCount ? 'bg-neon-gold text-obsidian border-neon-gold shadow-[0_0_40px_rgba(255,215,0,0.5)] cursor-pointer' : 'border-white/10 text-white/20 cursor-not-allowed'}`}
@@ -130,7 +142,7 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-full relative bg-obsidian">
       <div className="crt-overlay"></div>
-      
+
       <header className="h-12 bg-obsidian flex items-center justify-between border-b border-neon-gold/20 px-6 z-50">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-neon-gold text-lg">grid_view</span>
@@ -170,15 +182,15 @@ const App: React.FC = () => {
                   <div className="h-px flex-1 bg-neon-gold/30"></div>
                 </div>
               </div>
-              
+
               <div className="relative py-8 px-8 border-y border-neon-gold/10 w-full overflow-y-auto custom-scrollbar flex-1">
                 {logs.length > 0 ? (
                   <div className="space-y-6 text-left">
                     {logs.map(log => (
                       <div key={log.id} className={log.role === 'user' ? 'text-right opacity-50' : 'text-left'}>
-                         <p className={`text-lg leading-relaxed italic ${log.role === 'dm' ? 'text-white' : 'text-neon-gold'}`}>
-                            {log.role === 'user' && '> '}{log.content}
-                         </p>
+                        <p className={`text-lg leading-relaxed italic ${log.role === 'dm' ? 'text-white' : 'text-neon-gold'}`}>
+                          {log.role === 'user' && '> '}{log.content}
+                        </p>
                       </div>
                     ))}
                   </div>

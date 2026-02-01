@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, FunctionDeclaration, Modality } from "@google/genai";
 import { DM_SYSTEM_INSTRUCTION } from "../constants";
 
@@ -46,12 +45,13 @@ export const saveGameLogTool: FunctionDeclaration = {
   },
 };
 
+
 export const createAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 // Text-based fallback chat
 const ai = createAiClient();
 export const textChat = ai.chats.create({
-  model: 'gemini-3-pro-preview',
+  model: 'gemini-3-flash-preview',
   config: {
     systemInstruction: DM_SYSTEM_INSTRUCTION + "\nIMPORTANT: Always provide a narrative response in text, even if calling a tool.",
     tools: [{ functionDeclarations: [queryCompendiumTool, updateCharacterStatsTool, saveGameLogTool] }],
