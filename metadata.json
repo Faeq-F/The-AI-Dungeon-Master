@@ -1,7 +1,6 @@
-
 {
-  "name": "Autonomous DM Agent",
-  "description": "A sophisticated AI-driven Dungeon Master dashboard that manages character stats, world lore, and narrative progression using Gemini 3 Pro and simulated Snowflake storage.",
+  "name": "AI Dungeon Master Agent",
+  "description": "An AI-driven Dungeon Master dashboard that manages character stats, world lore, and narrative progression using Gemini 3 Pro, Eleven Labs voice agents and simulated Snowflake storage.",
   "requestFramePermissions": [
     "microphone"
   ]

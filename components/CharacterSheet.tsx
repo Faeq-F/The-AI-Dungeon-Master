@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CharacterStats } from '../types';
 
@@ -11,9 +10,9 @@ interface CharacterSheetProps {
   subLabel?: string;
 }
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ 
-  stats, 
-  isRightSide = false, 
+const CharacterSheet: React.FC<CharacterSheetProps> = ({
+  stats,
+  isRightSide = false,
   isBottomRow = false,
   avatarIcon = 'person',
   themeColor = '#00FF95',
@@ -28,11 +27,11 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({
         <div className="vital-orb">
           <svg className="orb-svg" viewBox="0 0 100 100">
             <circle cx="50" cy="50" fill="none" r="45" stroke="rgba(255,255,255,0.05)" strokeWidth="4"></circle>
-            <circle 
-              cx="50" cy="50" fill="none" r="45" 
-              stroke={themeColor} 
-              strokeDasharray="283" 
-              strokeDashoffset={dashOffset} 
+            <circle
+              cx="50" cy="50" fill="none" r="45"
+              stroke={themeColor}
+              strokeDasharray="283"
+              strokeDashoffset={dashOffset}
               strokeWidth="4"
               className="transition-all duration-1000"
             ></circle>
@@ -66,8 +65,8 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({
           <span>{Math.round(hpPercent)}%</span>
         </div>
         <div className="h-1 w-full bg-white/5">
-          <div 
-            className={`h-full ${isRightSide ? 'float-right' : ''}`} 
+          <div
+            className={`h-full ${isRightSide ? 'float-right' : ''}`}
             style={{ width: `${hpPercent}%`, backgroundColor: themeColor }}
           ></div>
         </div>

@@ -1,4 +1,3 @@
-
 import { CharacterStats } from './types';
 
 export const INITIAL_CHARACTER: CharacterStats = {

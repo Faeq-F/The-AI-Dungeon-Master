@@ -1,6 +1,6 @@
-# Backend (Flask + Snowflake + OpenRouter/Gemini)
+# Backend
 
-## Files
+(Flask + Snowflake + OpenRouter/Gemini)
 
 - **snowflake_db.py** — Snowflake connection and helpers:
   - `fetch_monster(name)` — Look up a compendium entry (monster/item) by name. Returns `{ name, type, hp, ac, description }` or `None`.
@@ -31,7 +31,3 @@ python app.py
 ```
 
 Server listens on `http://0.0.0.0:5000`. React (Vite on 5173) is allowed by CORS.
-
-## Frontend
-
-Point the React app at `http://localhost:5000` for the API. You can add a service that POSTs to `/api/game-action` with `{ action, stats }` and uses the returned `narrative` and `stats` instead of calling Gemini directly from the browser.

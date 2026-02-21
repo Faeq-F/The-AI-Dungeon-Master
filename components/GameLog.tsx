@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import { GameEntry } from '../types';
 
@@ -21,8 +20,8 @@ const GameLog: React.FC<GameLogProps> = ({ logs }) => {
         </div>
       )}
       {logs.map((log) => (
-        <div 
-          key={log.id} 
+        <div
+          key={log.id}
           className={`flex flex-col gap-1 ${log.role === 'user' ? 'items-end' : 'items-start'}`}
         >
           <div className="flex items-center gap-2 text-[10px] opacity-40">
@@ -34,11 +33,10 @@ const GameLog: React.FC<GameLogProps> = ({ logs }) => {
             <span>{log.timestamp}</span>
             {log.isSnowflakeSynced && <i className="fa-solid fa-cloud-check text-emerald-500" title="Synced to Snowflake"></i>}
           </div>
-          <div className={`max-w-[85%] p-3 rounded-lg text-sm leading-relaxed ${
-            log.role === 'user' 
-              ? 'bg-blue-900/20 text-blue-100 border border-blue-800/50 rounded-tr-none' 
+          <div className={`max-w-[85%] p-3 rounded-lg text-sm leading-relaxed ${log.role === 'user'
+              ? 'bg-blue-900/20 text-blue-100 border border-blue-800/50 rounded-tr-none'
               : 'bg-emerald-950/20 text-emerald-100 border border-emerald-900/50 rounded-tl-none glow-text'
-          }`}>
+            }`}>
             {log.content}
           </div>
         </div>

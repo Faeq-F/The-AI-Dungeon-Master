@@ -1,4 +1,3 @@
-
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;

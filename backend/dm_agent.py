@@ -197,13 +197,13 @@ def run_turn(
     xp = stats.get("xp", 0)
     gold = stats.get("gold", 0)
 
-    # 1) Scan message for monster names; if found, fetch exact HP/AC from Snowflake
+    # scan message for monster names; if found, fetch exact HP/AC from Snowflake
     monster_stats = _get_monster_stats_for_message(message)
 
-    # 2) Query Snowflake for monster/compendium data (for general context)
+    # query Snowflake for monster/compendium data (for general context)
     compendium_entries, first_monster = _query_compendium(message)
 
-    # 3) Call OpenRouter with compendium + monster stats (HP/AC in system prompt) + message
+    # call OpenRouter with compendium + monster stats (HP/AC in system prompt) + message
     result = _call_openrouter(message, stats, compendium_entries, monster_stats=monster_stats)
     narrative = result.get("narrative", "")
     hp_change = result.get("hp_change", 0)
@@ -226,7 +226,7 @@ def run_turn(
     if player_id:
         new_stats["player_id"] = player_id
 
-    # 4) Persist updated stats to Snowflake (equivalent of updateCharacterStats tool)
+    # persist updated stats to Snowflake (equivalent of updateCharacterStats tool)
     try:
         update_player_stats(new_stats)
     except Exception:
